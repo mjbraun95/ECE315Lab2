@@ -248,7 +248,7 @@ static void TaskMorseMsgProcessor( void *pvParameters ){
 			//update the "break_loop" variable accordingly. The "break_loop" variable will break this while loop and check the if() condition as provided below.
 			/***********************************************/
 
-			xQueueReceive(xQueue_12, &read_from_queue12_value[no_of_characters_read], pdMS_TO_TICKS(1500));
+			xQueueReceive(xQueue_12, &read_from_queue12_value[no_of_characters_read], pdMS_TO_TICKS(RECEIVER_POLL_PERIOD_MS));
 
 			if(strcmp(&read_from_queue12_value[no_of_characters_read], "/r#r")) {
 				for(int i = 0; i < no_of_characters_read; i++){
@@ -266,7 +266,7 @@ static void TaskMorseMsgProcessor( void *pvParameters ){
 			// set the "error_flag" variable accordingly and store the length of this error message in the "output_length" variable.
 			// if you have declared a temporary variable to store the error message, copy it into the "read_from_queue12_value" array.
 			/***********************************************/
-			error_flag =1;
+			error_flag = 1;
 			output_length = 179;
 			char temp[output_length];
 			strcpy(temp, "Maximum message length exceeded. Message ignored.\rType in the termination sequence to translate the 'excess' characters that went above the array limit and caused overflow.\r\r\n");
@@ -281,10 +281,10 @@ static void TaskMorseMsgProcessor( void *pvParameters ){
 
 		if(error_flag == 1){
 			memset(read_from_queue12_value, 0, TASK_PROCESS_BUFFER);
-			xQueueSendToBack(xQueue_23, &read_from_queue12_value, pdMS_TO_TICKS(1500));
+			xQueueSendToBack(xQueue_23, &read_from_queue12_value, pdMS_TO_TICKS(RECEIVER_POLL_PERIOD_MS));
 		} else {
 			for(int i = 0; i < no_of_characters_read; i++) {
-				xQueueSendToBack(xQueue_23, &read_from_queue12_value, pdMS_TO_TICKS(1500));
+				xQueueSendToBack(xQueue_23, &read_from_queue12_value, pdMS_TO_TICKS(RECEIVER_POLL_PERIOD_MS));
 			}
 		}
 	}
