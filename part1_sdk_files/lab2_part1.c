@@ -195,6 +195,7 @@ static void TaskMorseMsgReceiver( void *pvParameters ){
 		// enforce polling frequency here using the Delay function. The 20ms period has been already defined in this task for you!
 
 		/***********************************************/
+		vTaskDelayUntil(&xLastWakeTime, xPeriod);
 
 		// Receive characters over UART if there's room in the queue
 		if (uxQueueMessagesWaiting(xQueue_12) < XQUEUE_12_CAPACITY) {
@@ -205,6 +206,10 @@ static void TaskMorseMsgReceiver( void *pvParameters ){
 			//find that function and study it from this link: https://xilinx.github.io/embeddedsw.github.io/uartps/doc/html/api/globals.html
 
 			/***********************************************/
+			// base address is 0xE000_0000 from 6-29 - 3758096384(dec)
+			u32 baseAddr = 0xE0000000;
+			RecvChar = XUartPs_RecvByte(baseAddr);
+
 			if (xQueueSendToBack(xQueue_12, &RecvChar, portMAX_DELAY) != pdPASS) {
 				UART_print_queueerror_msg("xQueueSendToBack: Could not write character to xQueue_12\n");
 			}
@@ -243,6 +248,16 @@ static void TaskMorseMsgProcessor( void *pvParameters ){
 			//update the "break_loop" variable accordingly. The "break_loop" variable will break this while loop and check the if() condition as provided below.
 			/***********************************************/
 
+			xQueueReceive(xQueue_12, &read_from_queue12_value[no_of_characters_read], pdMS_TO_TICKS(RECEIVER_POLL_PERIOD_MS));
+
+			if(strcmp(&read_from_queue12_value[no_of_characters_read], "/r#r")) {
+				for(int i = 0; i < no_of_characters_read; i++){
+					morseToTextConverter(read_from_queue12_value[i]);
+				}
+				break_loop = TRUE;
+			}
+			no_of_characters_read = no_of_characters_read + 1;
+
 		}
 
 		if (!break_loop){
@@ -251,6 +266,11 @@ static void TaskMorseMsgProcessor( void *pvParameters ){
 			// set the "error_flag" variable accordingly and store the length of this error message in the "output_length" variable.
 			// if you have declared a temporary variable to store the error message, copy it into the "read_from_queue12_value" array.
 			/***********************************************/
+			error_flag = 1;
+			output_length = 179;
+			char temp[output_length];
+			strcpy(temp, "Maximum message length exceeded. Message ignored.\rType in the termination sequence to translate the 'excess' characters that went above the array limit and caused overflow.\r\r\n");
+			strcpy(read_from_queue12_value, temp);
 		}
 
 		/***********************************************/
@@ -261,6 +281,11 @@ static void TaskMorseMsgProcessor( void *pvParameters ){
 
 		if(error_flag == 1){
 			memset(read_from_queue12_value, 0, TASK_PROCESS_BUFFER);
+			xQueueSendToBack(xQueue_23, &read_from_queue12_value, pdMS_TO_TICKS(RECEIVER_POLL_PERIOD_MS));
+		} else {
+			for(int i = 0; i < no_of_characters_read; i++) {
+				xQueueSendToBack(xQueue_23, &read_from_queue12_value, pdMS_TO_TICKS(RECEIVER_POLL_PERIOD_MS));
+			}
 		}
 	}
 }
@@ -287,6 +312,9 @@ static void TaskDecodedMsgTransmitter( void *pvParameters ){
 				//find that function and study it from this link: https://xilinx.github.io/embeddedsw.github.io/uartps/doc/html/api/globals.html
 
 				/***********************************************/
+				u32 baseAddr = 0xE0000000;
+				XUartPs_SendByte(baseAddr, write_to_console);
+
 				break;
 			}
 		}
