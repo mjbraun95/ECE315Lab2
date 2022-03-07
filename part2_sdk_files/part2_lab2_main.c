@@ -117,11 +117,11 @@ void Task_UART_buffer_receive(void *p){
 				//add three lines of code here to check MyIsReceiveData() status, get the data byte using the MyReceiveByte(),
 				//check the status of MyIsTransmitFull() function.
 				//the return value of the MyReceiveByte() function must be stored inside the "pcString" variable.
-				if (MyIsReceiveData() == pdTRUE && MyIsTransmitFull() == pdFALSE) {
-					pcString = MyReceiveByte();
-				}
-				/*******************************************************/
 
+				/*******************************************************/
+				while(MyIsReceiveData() == pdFALSE);
+				pcString = MyReceiveByte();
+				while(MyIsTransmitFull() == pdTRUE);
 				write_to_queue_value = (char) pcString;	//casted to "char" type.
 
 				/*******************************************************/
@@ -129,11 +129,11 @@ void Task_UART_buffer_receive(void *p){
 				//"write_to_queue_value" variable.
 				//store the changed byte to "write_to_queue_value" itself.
 				/*******************************************************/
-				if (islower(write_to_queue_value)) {
-					write_to_queue_value = toupper(write_to_queue_value);
+				if (write_to_queue_value >= 'A' && write_to_queue_value <= 'Z'){ //--'A' = 65, 'a' = 97, 'Z' = 90, 'z' = 122
+					write_to_queue_value += 32;
 				}
-				else if (isupper(write_to_queue_value)) {
-					write_to_queue_value = tolower(write_to_queue_value);
+				else if (write_to_queue_value >= 'a' && write_to_queue_value <= 'z'){
+					write_to_queue_value -= 32;
 				}
 				/*******************************************************/
 				//write one line of code to increment the variable used as a byte counter for UART characters
@@ -160,17 +160,20 @@ void Task_UART_buffer_receive(void *p){
 				//Also, print this message on the console: "Byte Counter, CountRxIrq && CountTxIrq set to zero\n\n"
 				//the counter variables have been already given to you.
 				//note that the received character byte is stored inside "write_to_queue_value" variable.
-//				if (returnFlag == 2 && write_to_queue_value == CHAR_CARRIAGE_RETURN){
-//					returnFlag = 0;
-//					taskYIELD(); //force context switch
-//				}else if (returnFlag == 1 && write_to_queue_value == CHAR_ESC){
-//					returnFlag = 2;
-//				}else if (write_to_queue_value == CHAR_CARRIAGE_RETURN){
-//					returnFlag = 1;
-//				}else{
-//					returnFlag = 0;
-//				}
-				xil_printf( "Byte Counter, CountRxIrq && CountTxIrq set to zero\n\n");
+				if (restartFlag == 2 && write_to_queue_value == CHAR_CARRIAGE_RETURN){
+					restartFlag = 0;
+					Countbytes = 0;
+					CountTxIrq = 0;
+					CountRxIrq = 0;
+					printString("Byte Counter, CountRxIrq && CountTxIrq set to zero\n\n");
+
+				}else if (restartFlag == 1 && write_to_queue_value == '%'){
+					restartFlag = 2;
+				}else if (write_to_queue_value == CHAR_CARRIAGE_RETURN){
+					restartFlag = 1;
+				}else{
+					restartFlag = 0;
+				}
 				/*******************************************************/
 			}
 	}
