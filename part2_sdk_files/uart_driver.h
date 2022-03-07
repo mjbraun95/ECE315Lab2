@@ -61,7 +61,8 @@ void Interrupt_Handler(void *CallBackRef, u32 Event, unsigned int EventData)
 			//implement the logic to check if there are received bytes from the UART. If yes, then read them and send it to the back of the receive queue.
 			//Make sure to use proper queue function in the ISR! That is use the FromISR queue methods to secure the queues for ISR.
 			//the UART received byte will be read inside the u8 "receive_buffer" variable already declared for you!
-			if (XUartPs_IsReceiveData(XPAR_XUARTPS_0_BASEADDR)) {
+			while (XUartPs_IsReceiveData(XPAR_XUARTPS_0_BASEADDR)){
+				receive_buffer = XUartPs_RecvByte(XPAR_XUARTPS_0_BASEADDR);
 				xQueueSendToBackFromISR(xQueue_for_receive, &receive_buffer, &xHigherPriorityTaskWoken);
 			}
 			/*******************************************************/
@@ -109,9 +110,12 @@ BaseType_t MyIsReceiveData( void ){
 
 	/*******************************************************/
 	//write the code to return pdTRUE if there is newly received data into the receive queue else return pdFALSE.
-	if (!xQueueIsQueueEmptyFromISR(xQueue_for_receive)) {
+	taskENTER_CRITICAL();
+	if(uxQueueMessagesWaiting( xQueue_for_receive ) > 0){
+		taskEXIT_CRITICAL();
 		return pdTRUE;
-	} else {
+	}else{
+		taskEXIT_CRITICAL();
 		return pdFALSE;
 	}
 	/*******************************************************/
@@ -123,9 +127,8 @@ u8 MyReceiveByte( void ){
 	/*******************************************************/
 	//write the code to return the 8-bit value that is present inside the received queue of the UART.
 	//use the "recv" variable to read the queue value.
-	recv = XUartPs_RecvByte(XPAR_XUARTPS_0_BASEADDR);
 	/*******************************************************/
-
+	xQueueReceive(xQueue_for_receive, (void*) &recv, 0);
 	taskEXIT_CRITICAL();
 	return recv;
 }
@@ -134,9 +137,13 @@ BaseType_t MyIsTransmitFull( void ) {
 
 	/*******************************************************/
 	//write the code to return pdTRUE if the transmit queue data structure is FULL else return pdFALSE.
-	if (uxQueueSpacesAvailable(xQueue_for_transmit) == 0) {
+	taskENTER_CRITICAL();
+	if(uxQueueSpacesAvailable(xQueue_for_transmit) == 0){
+		taskEXIT_CRITICAL();
 		return pdTRUE;
-	} else {
+	}
+	else{
+		taskEXIT_CRITICAL();
 		return pdFALSE;
 	}
 	/*******************************************************/
